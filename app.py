@@ -1541,7 +1541,7 @@ class HEBScraper:
         return filepath
     
     def save_to_csv(self, filename=None):
-        """Save scraped products to CSV file with JSON-like format (same as JSON file)"""
+        """Save scraped products to CSV file with tabular columns (Excel-friendly)."""
         if not self.products:
             print("No products to save")
             return None
@@ -1552,31 +1552,42 @@ class HEBScraper:
         
         filepath = os.path.join(os.path.dirname(__file__), filename)
         
+        fieldnames = ['product_title', 'product_price', 'product_image', 'product_hyperlink']
+        
         with open(filepath, 'w', newline='', encoding='utf-8') as f:
-            # Write each product as a formatted JSON object without curly braces
-            for i, product in enumerate(self.products):
-                # Format each product as JSON with indent=2 (same as JSON file)
-                product_json = json.dumps(product, indent=2, ensure_ascii=False)
-                # Remove the opening { and closing } braces
-                # Split by lines, remove first line ({) and last line (})
-                lines = product_json.strip().split('\n')
-                if len(lines) > 2:
-                    # Remove first line (opening brace) and last line (closing brace)
-                    content_lines = lines[1:-1]
-                    # Write the content without braces
-                    f.write('\n'.join(content_lines))
-                else:
-                    # Fallback: just remove braces if single line
-                    content = product_json.strip().strip('{}').strip()
-                    f.write(content)
-                # Add spaces between products instead of commas
-                if i < len(self.products) - 1:
-                    f.write('\n\n')
-                else:
-                    f.write('\n')
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(self.products)
         
         print(f"Data saved to {filepath}")
         return filepath
+
+    def save_to_excel(self, filename=None):
+        """Save scraped products to an Excel file (tabular columns)."""
+        if not self.products:
+            print("No products to save")
+            return None
+        
+        if not filename:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"heb_products_{timestamp}.xlsx"
+        
+        filepath = os.path.join(os.path.dirname(__file__), filename)
+        
+        try:
+            import pandas as pd
+        except ImportError:
+            print("pandas is not installed; cannot create Excel file. Skipping Excel export.")
+            return None
+        
+        try:
+            df = pd.DataFrame(self.products)
+            df.to_excel(filepath, index=False)
+            print(f"Data saved to {filepath}")
+            return filepath
+        except Exception as e:
+            print(f"Error saving Excel file: {e}")
+            return None
     
     def close(self):
         """Close the WebDriver"""
@@ -1643,11 +1654,12 @@ def main():
             print(f"\n{'=' * 60}")
             print("Saving data to files...")
             print(f"{'=' * 60}")
-            json_file = scraper.save_to_json()
             csv_file = scraper.save_to_csv()
+            excel_file = scraper.save_to_excel()
             print(f"\n✓ Data saved successfully!")
-            print(f"  JSON: {json_file}")
             print(f"  CSV: {csv_file}")
+            if excel_file:
+                print(f"  Excel: {excel_file}")
             print(f"\nTotal products in files: {len(products)}")
         else:
             print("\n⚠ No products found. The site structure may have changed or the page loaded differently.")
@@ -1659,8 +1671,8 @@ def main():
         if scraper and scraper.products:
             print(f"\nSaving {len(scraper.products)} products scraped so far...")
             try:
-                scraper.save_to_json()
                 scraper.save_to_csv()
+                scraper.save_to_excel()
                 print("✓ Partial data saved successfully!")
             except:
                 pass
@@ -1672,8 +1684,8 @@ def main():
         if scraper and scraper.products:
             print(f"\nSaving {len(scraper.products)} products scraped so far...")
             try:
-                scraper.save_to_json()
                 scraper.save_to_csv()
+                scraper.save_to_excel()
                 print("✓ Partial data saved successfully!")
             except:
                 pass
