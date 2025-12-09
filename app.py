@@ -1541,7 +1541,7 @@ class HEBScraper:
         return filepath
     
     def save_to_csv(self, filename=None):
-        """Save scraped products to CSV file"""
+        """Save scraped products to CSV file with JSON-like format (same as JSON file)"""
         if not self.products:
             print("No products to save")
             return None
@@ -1553,9 +1553,27 @@ class HEBScraper:
         filepath = os.path.join(os.path.dirname(__file__), filename)
         
         with open(filepath, 'w', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=['product_title', 'product_price', 'product_image', 'product_hyperlink'])
-            writer.writeheader()
-            writer.writerows(self.products)
+            # Write each product as a formatted JSON object without curly braces
+            for i, product in enumerate(self.products):
+                # Format each product as JSON with indent=2 (same as JSON file)
+                product_json = json.dumps(product, indent=2, ensure_ascii=False)
+                # Remove the opening { and closing } braces
+                # Split by lines, remove first line ({) and last line (})
+                lines = product_json.strip().split('\n')
+                if len(lines) > 2:
+                    # Remove first line (opening brace) and last line (closing brace)
+                    content_lines = lines[1:-1]
+                    # Write the content without braces
+                    f.write('\n'.join(content_lines))
+                else:
+                    # Fallback: just remove braces if single line
+                    content = product_json.strip().strip('{}').strip()
+                    f.write(content)
+                # Add spaces between products instead of commas
+                if i < len(self.products) - 1:
+                    f.write('\n\n')
+                else:
+                    f.write('\n')
         
         print(f"Data saved to {filepath}")
         return filepath
